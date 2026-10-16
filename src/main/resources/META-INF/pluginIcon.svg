@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+  <defs>
+    <!-- IntelliJ-style gradient background -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2B2D30;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E1F22;stop-opacity:1" />
+    </linearGradient>
+    <!-- Power button gradient -->
+    <linearGradient id="powerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FE2857;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#CC1E43;stop-opacity:1" />
+    </linearGradient>
+    <!-- Clock ring gradient -->
+    <linearGradient id="clockGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6B9DFC;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3D6DE0;stop-opacity:1" />
+    </linearGradient>
+    <!-- Glow effect -->
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Rounded square background (IntelliJ plugin icon shape) -->
+  <rect x="1.25" y="1.25" width="37.5" height="37.5" rx="6.25" ry="6.25" fill="url(#bgGrad)" stroke="#3C3F41" stroke-width="0.47"/>
+
+  <!-- Subtle inner border highlight -->
+  <rect x="1.56" y="1.56" width="36.88" height="36.88" rx="5.94" ry="5.94" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="0.31"/>
+
+  <!-- Clock circle (outer ring) -->
+  <circle cx="20" cy="20" r="8.13" fill="none" stroke="url(#clockGrad)" stroke-width="0.94" opacity="0.9"/>
+
+  <!-- Clock tick marks -->
+  <g stroke="#6B9DFC" stroke-width="0.63" stroke-linecap="round" opacity="0.6">
+    <line x1="20" y1="11.88" x2="20" y2="13.13"/>
+    <line x1="20" y1="26.88" x2="20" y2="28.13"/>
+    <line x1="11.88" y1="20" x2="13.13" y2="20"/>
+    <line x1="26.88" y1="20" x2="28.13" y2="20"/>
+  </g>
+
+  <!-- Clock hands -->
+  <g stroke="#A8C7FA" stroke-width="0.69" stroke-linecap="round" fill="none">
+    <line x1="20" y1="20" x2="20" y2="15.63"/>
+    <line x1="20" y1="20" x2="23.81" y2="18.31"/>
+  </g>
+
+  <!-- Center dot -->
+  <circle cx="20" cy="20" r="0.69" fill="#A8C7FA"/>
+
+  <!-- ZZZ sleep indicators -->
+  <g fill="#A8C7FA" opacity="0.45" font-family="Arial, sans-serif" font-weight="bold" font-style="italic">
+    <text x="8.13" y="31.25" font-size="3.75" filter="url(#softGlow)">z</text>
+    <text x="10.63" y="28.75" font-size="5" filter="url(#softGlow)">z</text>
+    <text x="13.75" y="25.63" font-size="6.25" filter="url(#softGlow)">z</text>
+  </g>
+</svg>

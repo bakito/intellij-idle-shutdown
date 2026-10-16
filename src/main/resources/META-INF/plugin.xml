@@ -1,0 +1,24 @@
+<idea-plugin>
+    <id>com.example.idleshutdown</id>
+    <name>Idle Shutdown</name>
+    <vendor>Example</vendor>
+    <description><![CDATA[
+        Saves all files and closes the IDE after a configurable period without
+        keyboard or mouse activity. A warning is shown first and any input cancels it;
+        shutdown can optionally be skipped while run/debug processes are active. Configure under Settings | Tools | Idle Shutdown.
+        Disabled by default.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="Idle Shutdown" displayType="STICKY_BALLOON"/>
+        <postStartupActivity implementation="com.example.idleshutdown.IdleShutdownStartup"/>
+        <applicationConfigurable parentId="tools"
+                                 id="com.example.idleshutdown.settings"
+                                 instance="com.example.idleshutdown.IdleShutdownConfigurable"
+                                 displayName="Idle Shutdown"/>
+        <statusBarWidgetFactory id="IdleActivityStatusBarWidget"
+                                 implementation="com.example.idleshutdown.IdleActivityStatusBarWidgetFactory"/>
+    </extensions>
+</idea-plugin>
