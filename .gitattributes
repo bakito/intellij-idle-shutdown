@@ -1,0 +1,5 @@
+# Force LF for Unix scripts
+gradlew text eol=lf
+
+# Force CRLF for Windows batch files
+gradlew.bat text eol=crlf

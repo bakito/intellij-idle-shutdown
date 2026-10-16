@@ -1,0 +1,108 @@
+# Idle Shutdown
+
+<img src="src/main/resources/META-INF/pluginIcon.svg" width="128" alt="Plugin Icon" />
+
+An IntelliJ IDEA plugin that automatically saves all files and closes the IDE after a configurable period of inactivity.
+
+## Features
+
+- **Automatic shutdown** — Closes the IDE when no keyboard or mouse activity is detected for a set amount of time.
+- **Warning notification** — Shows a warning before closing, giving you a chance to cancel by moving the mouse or pressing a key.
+- **Process-aware** — Optionally skips shutdown while run/debug processes are active.
+- **Status bar** — Optionally displays the last activity timestamp and a countdown until shutdown in the IDE status bar; the countdown turns red during the warning phase.
+- **Safe** — Saves all open files before exiting.
+- **Configurable** — Enable/disable the feature and adjust the idle timeout directly from the IDE settings, or set the timeout via a file for centralized control.
+
+## Requirements
+
+- IntelliJ IDEA Community **2025.2** or later (build 252+).
+- JDK **21** or later to build the plugin.
+
+## Development with devbox
+
+The recommended way to develop this plugin is using [devbox](https://jetify.com/docs/devbox), which provides a reproducible development environment with all required dependencies.
+
+### Installing devbox
+
+```bash
+nix shell nixpkgs#devbox
+devbox install
+```
+
+Or follow the full installation guide at <https://jetify.com/docs/devbox/installing>.
+
+### Using devbox
+
+Enter the devbox shell to activate the environment:
+
+```bash
+devbox shell
+```
+
+This provides Java 25 and Gradle, with the project's `.gradle` directory isolated under the repository root.
+
+Run any of the predefined commands:
+
+```bash
+devbox run buildPlugin   # Build the plugin archive
+devbox run test          # Run unit tests
+devbox run run-ide       # Run the plugin in a sandbox IDE for testing
+devbox run verify        # Validate the plugin structure
+devbox run clean         # Clean build artifacts
+```
+
+## Building
+
+Build the plugin with Gradle:
+
+```bash
+./gradlew buildPlugin
+```
+
+The built plugin archive is output to `build/distributions/idle-shutdown-<version>.zip`.
+
+Other useful commands:
+
+```bash
+./gradlew runIde        # Run the plugin in a sandbox IDE for testing
+./gradlew verifyPlugin  # Validate the plugin structure
+./gradlew clean         # Clean build artifacts
+```
+
+## Installing
+
+1. Build the plugin using `./gradlew buildPlugin`.
+2. In IntelliJ IDEA, open **Settings | Plugins** (`Ctrl+Alt+S`).
+3. Click the gear icon ⚙️ → **Install Plugin from Disk…**.
+4. Select the `idle-shutdown-<version>.zip` file from the `build/distributions/` directory.
+5. Restart the IDE when prompted.
+
+## Configuration
+
+Open **Settings | Tools | Idle Shutdown** to configure the plugin.
+
+| Setting                                             | Default | Description                                                                                      |
+|-----------------------------------------------------|---------|--------------------------------------------------------------------------------------------------|
+| **Enable idle shutdown**                            | `Off`   | Turn the idle shutdown feature on or off. Forced on when `/tmp/idle` exists.                     |
+| **Idle timeout (minutes)**                          | `60`    | Minutes of inactivity before the shutdown sequence starts. Overridden by `/tmp/idle` if present. |
+| **Warning countdown (seconds)**                     | `60`    | Seconds the warning is visible before the IDE closes. Set to `0` to close immediately.           |
+| **Don't close while a run/debug process is active** | `On`    | Postpone shutdown while tests, builds, or debug sessions are running.                            |
+| **Show last activity in status bar**                | `Off`   | Display the last keyboard/mouse activity timestamp in the IDE status bar.                        |
+
+### Idle Timeout via File
+
+The idle timeout can be set centrally by creating the file `/tmp/idle` with a single integer value (in minutes):
+
+```bash
+echo "60" > /tmp/idle
+```
+
+When this file exists, the timeout is read from it and cannot be changed from the IDE settings UI. The feature is also forced enabled. If the file is missing or contains an invalid value, the plugin uses the value from the IDE settings (default: **60 minutes**).
+
+### How it works
+
+- The plugin monitors keyboard and mouse events at the system level.
+- After the idle timeout is reached, a warning notification appears.
+- Any keyboard or mouse input during the warning period cancels the shutdown.
+- If the warning countdown expires, all modified files are saved and the IDE exits.
+- If "Don't close while a run/debug process is active" is enabled, shutdown is postponed while tests, builds, or debug sessions are running.

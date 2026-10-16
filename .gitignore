@@ -1,0 +1,27 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Kotlin
+.kotlin
+
+# IntelliJ platform plugin
+out/
+
+# IntelliJ IDE
+.idea/
+.intellijPlatform/
+*.iml
+*.iws
+*.ipr
+
+# DevBox
+.devbox/
+devbox.dvc/
+
+# macOS
+.DS_Store
+
+# Misc
+*.log

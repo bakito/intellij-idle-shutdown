@@ -1,0 +1,25 @@
+<idea-plugin>
+    <id>com.github.bakito.idleshutdown</id>
+    <name>Idle Shutdown</name>
+    <vendor>bakito</vendor>
+    <description><![CDATA[
+        Saves all files and closes the IDE after a configurable period of inactivity.
+        Shows a countdown in the status bar and a warning notification before shutdown;
+        any keyboard or mouse input cancels the pending shutdown. Optionally skips
+        shutdown while run/debug processes are active. Configure under Settings | Tools | Idle Shutdown.
+        Disabled by default.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="Idle Shutdown" displayType="STICKY_BALLOON"/>
+        <postStartupActivity implementation="com.github.bakito.idleshutdown.IdleShutdownStartup"/>
+        <applicationConfigurable parentId="tools"
+                                 id="com.github.bakito.idleshutdown.settings"
+                                 instance="com.github.bakito.idleshutdown.IdleShutdownConfigurable"
+                                 displayName="Idle Shutdown"/>
+        <statusBarWidgetFactory id="IdleActivityStatusBarWidget"
+                                 implementation="com.github.bakito.idleshutdown.IdleActivityStatusBarWidgetFactory"/>
+    </extensions>
+</idea-plugin>
