@@ -1,10 +1,13 @@
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
 plugins {
     kotlin("jvm") version "2.4.21"
     id("org.jetbrains.intellij.platform") version "2.19.0"
 }
 
 group = "com.github.bakito"
-version = "1.0.0"
+version = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd"))
 
 repositories {
     mavenCentral()
