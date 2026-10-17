@@ -118,3 +118,23 @@ EOF
 - Any keyboard or mouse input during the warning period cancels the shutdown.
 - If the warning countdown expires, all modified files are saved and the IDE exits.
 - If "Don't close while a run/debug process is active" is enabled, shutdown is postponed while tests, builds, or debug sessions are running.
+
+### Troubleshooting
+
+#### SSL error during `buildSearchableOptions`
+
+When building the plugin, you may encounter an SSL certificate error in the `buildSearchableOptions` Gradle task:
+
+> javax.net.ssl.SSLHandshakeException: ... / X509TrustException: ...
+
+**Cause:** The `buildSearchableOptions` task launches the IDE in headless mode to generate metadata for searchable settings. On some corporate networks or CI environments with strict SSL/proxy configurations, the headless IDE instance fails to validate SSL certificates when downloading resources.
+
+**Fix:** If the error is non-blocking (the build still succeeds), it can be safely ignored. To eliminate the error, you can disable the task in `build.gradle.kts`:
+
+```kotlin
+intellijPlatform {
+    buildSearchableOptions = false
+}
+```
+
+Disabling this task means the plugin's settings won't appear in the IDE Settings search dialog, but all other functionality remains unaffected. Alternatively, ensure your build environment has access to the required SSL certificates or is properly configured for your network's proxy.
