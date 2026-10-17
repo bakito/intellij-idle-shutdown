@@ -13,7 +13,7 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        intellijIdeaCommunity("2025.2")
+        intellijIdea("2025.2")
         pluginVerifier()
     }
     testImplementation(kotlin("test"))

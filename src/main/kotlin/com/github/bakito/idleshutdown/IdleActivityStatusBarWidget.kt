@@ -8,7 +8,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.CustomStatusBarWidget
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
-import com.intellij.util.ui.UIUtil
+import com.intellij.ui.JBColor
 import javax.swing.JLabel
 import javax.swing.event.MouseInputAdapter
 import java.awt.Color
@@ -59,8 +59,7 @@ class IdleActivityStatusBarWidget(private val project: Project) :
                     val text = formatRemaining(remaining)
 
                     textLabel.text = text
-                    @Suppress("DEPRECATION")
-                    val themeColor = if (UIUtil.isUnderDarcula()) THEME_DARK else THEME_LIGHT
+                    val themeColor = if (!JBColor.isBright()) THEME_DARK else THEME_LIGHT
                     textLabel.foreground = themeColor
                 } else {
                     textLabel.text = ""

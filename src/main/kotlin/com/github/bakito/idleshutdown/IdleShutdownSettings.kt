@@ -7,7 +7,7 @@ import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.service
 import java.io.File
 
-@Service(Service.Level.APP)
+@Service
 @State(name = "IdleShutdownSettings", storages = [Storage("idleShutdown.xml")])
 class IdleShutdownSettings : PersistentStateComponent<IdleShutdownSettings.State> {
 

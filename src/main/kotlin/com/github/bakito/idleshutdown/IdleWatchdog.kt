@@ -2,8 +2,8 @@ package com.github.bakito.idleshutdown
 
 import com.intellij.execution.ExecutionManager
 import com.intellij.notification.Notification
-import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
+import com.intellij.notification.Notifications
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
  * Optionally postpones the whole thing while a run/debug process is running.
  * Other background IDE work (indexing etc.) does not count as user activity.
  */
-@Service(Service.Level.APP)
+@Service
 class IdleWatchdog : Disposable {
 
     private val log = logger<IdleWatchdog>()
@@ -134,15 +134,13 @@ class IdleWatchdog : Disposable {
         }
 
         shutdownDeadlineMs = System.currentTimeMillis() + warningSeconds * 1000L
-        val n = NotificationGroupManager.getInstance()
-            .getNotificationGroup(NOTIFICATION_GROUP_ID)
-            .createNotification(
-                "Idle Shutdown: no activity detected. The IDE will close in $warningSeconds seconds. " +
-                    "Move the mouse or press a key to cancel.",
-                NotificationType.WARNING
-            )
+        val n = Notification(NOTIFICATION_GROUP_ID,
+            "Idle Shutdown: no activity detected. The IDE will close in $warningSeconds seconds. " +
+                "Move the mouse or press a key to cancel.",
+            NotificationType.WARNING
+        )
         warning = n
-        n.notify(null)
+        Notifications.Bus.notify(n)
     }
 
     private fun hasRunningProcess(): Boolean = try {
