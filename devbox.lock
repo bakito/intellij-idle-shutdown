@@ -1,9 +1,9 @@
 {
   "lockfile_version": "1",
   "packages": {
-    "git@latest": {
-      "last_modified": "2026-10-08T19:21:32Z",
-      "resolved": "github:NixOS/nixpkgs/8edc0c72e3a38faf5434e40d1f19431125fe4b30#git",
+    "git@2.55.0": {
+      "last_modified": "2026-10-14T08:20:44Z",
+      "resolved": "github:NixOS/nixpkgs/319e4cebef10cbb636c6ea392137b52ad105336a#git",
       "source": "devbox-search",
       "version": "2.55.0",
       "systems": {
@@ -47,12 +47,12 @@
               "default": true
             },
             {
-              "name": "doc",
-              "path": "/nix/store/5f39kd6g3irac28rgk89yqwaamaj01rx-git-2.55.0-doc"
-            },
-            {
               "name": "debug",
               "path": "/nix/store/jfnrrjgvhv0la9dpzb1yxg8bx2gf9aii-git-2.55.0-debug"
+            },
+            {
+              "name": "doc",
+              "path": "/nix/store/5f39kd6g3irac28rgk89yqwaamaj01rx-git-2.55.0-doc"
             }
           ],
           "store_path": "/nix/store/lg46w7hrjx7kylsh6645c9l975i8h43b-git-2.55.0"
