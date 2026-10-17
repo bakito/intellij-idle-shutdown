@@ -12,24 +12,33 @@ import java.io.File
 class IdleShutdownSettings : PersistentStateComponent<IdleShutdownSettings.State> {
 
     companion object {
-        const val IDLE_TIMEOUT_FILE = "/tmp/idle"
+        const val IDLE_TIMEOUT_FILE = "~/.config/bakito/intellij-idle-shutdown.xml"
 
-        private val TimeoutFile = File(IDLE_TIMEOUT_FILE)
-        private val DefaultTimeoutMinutes: Int = run {
-            try {
-                TimeoutFile.readText().trim().toInt()
-            } catch (e: Exception) {
-                60
-            }
-        }
+        private val TimeoutFile = File(System.getProperty("user.home"))
+            .resolve(".config/bakito/intellij-idle-shutdown.xml")
 
         fun getInstance(): IdleShutdownSettings = service()
+
+        /**
+         * Reads the idle timeout from the XML config file.
+         * Returns null if the file does not exist or cannot be parsed.
+         */
+        private fun readTimeoutFromConfig(): Int? {
+            if (!TimeoutFile.exists()) return null
+            return try {
+                val content = TimeoutFile.readText()
+                val pattern = Regex("<idleShutdownAfterMinutes>([^<]+)</idleShutdownAfterMinutes>")
+                pattern.find(content)?.groupValues?.get(1)?.toIntOrNull()
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
 
     class State {
         /** Whether the idle shutdown feature is enabled. */
         var enabled: Boolean = false
-        /** Custom idle timeout in minutes (used when the timeout file does not exist). */
+        /** Custom idle timeout in minutes (used when the config file does not exist). */
         var customTimeoutMinutes: Int = 60
         /** Seconds of visible warning before the IDE actually closes. 0 = close immediately. */
         var warningSeconds: Int = 60
@@ -41,19 +50,12 @@ class IdleShutdownSettings : PersistentStateComponent<IdleShutdownSettings.State
 
     private var state = State()
 
-    /** Returns true if the idle timeout file exists in the file system. */
+    /** Returns true if the idle config file exists in the file system. */
     fun isTimeoutFilePresent(): Boolean = TimeoutFile.exists()
 
-    /** Returns the idle timeout in minutes, read from /tmp/idle or the user's custom setting. */
+    /** Returns the idle timeout in minutes, read from the config file or the user's custom setting. */
     fun getTimeoutMinutes(): Int {
-        if (TimeoutFile.exists()) {
-            return try {
-                TimeoutFile.readText().trim().toInt()
-            } catch (e: Exception) {
-                60
-            }
-        }
-        return state.customTimeoutMinutes
+        return readTimeoutFromConfig() ?: state.customTimeoutMinutes
     }
 
     /** Returns true if the plugin can be disabled by the user. */
