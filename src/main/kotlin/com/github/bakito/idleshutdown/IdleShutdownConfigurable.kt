@@ -49,6 +49,14 @@ class IdleShutdownConfigurable : Configurable {
                 row {
                     label("Idle timeout: ${settings.getTimeoutMinutes()} minutes (configured in ${IdleShutdownSettings.IDLE_TIMEOUT_FILE}, cannot be changed here).")
                 }
+                val parseError = settings.getParseError()
+                if (parseError != null) {
+                    row {
+                        label(parseError).apply {
+                            component.foreground = java.awt.Color(200, 0, 0)
+                        }
+                    }
+                }
                 separator()
             }
 

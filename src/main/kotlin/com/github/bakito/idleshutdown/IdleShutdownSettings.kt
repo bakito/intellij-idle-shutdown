@@ -5,6 +5,8 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.logger
+import javax.xml.parsers.DocumentBuilderFactory
 import java.io.File
 
 @Service
@@ -12,24 +14,65 @@ import java.io.File
 class IdleShutdownSettings : PersistentStateComponent<IdleShutdownSettings.State> {
 
     companion object {
-        const val IDLE_TIMEOUT_FILE = "/tmp/idle"
+        private val log = logger<IdleShutdownSettings>()
 
-        private val TimeoutFile = File(IDLE_TIMEOUT_FILE)
-        private val DefaultTimeoutMinutes: Int = run {
-            try {
-                TimeoutFile.readText().trim().toInt()
-            } catch (e: Exception) {
-                60
-            }
-        }
+        const val IDLE_TIMEOUT_FILE = "~/.config/bakito/intellij-idle-shutdown.xml"
+
+        private val TimeoutFile = File(System.getProperty("user.home"))
+            .resolve(".config/bakito/intellij-idle-shutdown.xml")
 
         fun getInstance(): IdleShutdownSettings = service()
+
+        @Volatile private var parseError: String? = null
+
+        fun getParseError(): String? = parseError
+
+        /**
+         * Reads the idle timeout from the XML config file using a safe DOM parser.
+         * Returns null if the file does not exist or cannot be parsed.
+         */
+        private fun readTimeoutFromConfig(): Int? {
+            if (!TimeoutFile.exists()) {
+                parseError = null
+                return null
+            }
+            return try {
+                val factory = DocumentBuilderFactory.newInstance().apply {
+                    setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+                    setFeature("http://xml.org/sax/features/external-general-entities", false)
+                    setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+                    setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+                }
+                val document = factory.newDocumentBuilder().parse(TimeoutFile)
+                val elements = document.getElementsByTagName("idleShutdownAfterMinutes")
+                if (elements.length == 0) {
+                    parseError = "Config file exists but is missing the idleShutdownAfterMinutes element"
+                    log.warn("Config file missing idleShutdownAfterMinutes element")
+                    null
+                } else {
+                    val text = elements.item(0).textContent.trim()
+                    val value = text.toIntOrNull()
+                    if (value == null) {
+                        parseError = "Config file value '$text' is not a valid integer"
+                        log.warn("Config file value '$text' is not a valid integer")
+                        null
+                    } else {
+                        parseError = null
+                        value
+                    }
+                }
+            } catch (e: Exception) {
+                parseError = "Failed to parse config file: ${e.message}"
+                log.warn("Failed to parse config file $IDLE_TIMEOUT_FILE", e)
+                null
+            }
+        }
     }
 
     class State {
         /** Whether the idle shutdown feature is enabled. */
         var enabled: Boolean = false
-        /** Custom idle timeout in minutes (used when the timeout file does not exist). */
+        /** Custom idle timeout in minutes (used when the config file does not exist). */
         var customTimeoutMinutes: Int = 60
         /** Seconds of visible warning before the IDE actually closes. 0 = close immediately. */
         var warningSeconds: Int = 60
@@ -41,19 +84,15 @@ class IdleShutdownSettings : PersistentStateComponent<IdleShutdownSettings.State
 
     private var state = State()
 
-    /** Returns true if the idle timeout file exists in the file system. */
+    /** Returns true if the idle config file exists in the file system. */
     fun isTimeoutFilePresent(): Boolean = TimeoutFile.exists()
 
-    /** Returns the idle timeout in minutes, read from /tmp/idle or the user's custom setting. */
+    /** Returns the last parsing error message if the config file exists but could not be parsed. */
+    fun getParseError(): String? = parseError
+
+    /** Returns the idle timeout in minutes, read from the config file or the user's custom setting. */
     fun getTimeoutMinutes(): Int {
-        if (TimeoutFile.exists()) {
-            return try {
-                TimeoutFile.readText().trim().toInt()
-            } catch (e: Exception) {
-                60
-            }
-        }
-        return state.customTimeoutMinutes
+        return readTimeoutFromConfig() ?: state.customTimeoutMinutes
     }
 
     /** Returns true if the plugin can be disabled by the user. */

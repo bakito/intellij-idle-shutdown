@@ -81,23 +81,35 @@ Other useful commands:
 
 Open **Settings | Tools | Idle Shutdown** to configure the plugin.
 
-| Setting                                             | Default | Description                                                                                      |
-|-----------------------------------------------------|---------|--------------------------------------------------------------------------------------------------|
-| **Enable idle shutdown**                            | `Off`   | Turn the idle shutdown feature on or off. Forced on when `/tmp/idle` exists.                     |
-| **Idle timeout (minutes)**                          | `60`    | Minutes of inactivity before the shutdown sequence starts. Overridden by `/tmp/idle` if present. |
-| **Warning countdown (seconds)**                     | `60`    | Seconds the warning is visible before the IDE closes. Set to `0` to close immediately.           |
-| **Don't close while a run/debug process is active** | `On`    | Postpone shutdown while tests, builds, or debug sessions are running.                            |
-| **Show last activity in status bar**                | `Off`   | Display the last keyboard/mouse activity timestamp in the IDE status bar.                        |
+| Setting                                             | Default | Description                                                                                                    |
+|-----------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------|
+| **Enable idle shutdown**                            | `Off`   | Turn the idle shutdown feature on or off. Forced on when `~/.config/bakito/intellij-idle-shutdown.xml` exists. |
+| **Idle timeout (minutes)**                          | `60`    | Minutes of inactivity before the shutdown sequence starts. Overridden by the config file if present.           |
+| **Warning countdown (seconds)**                     | `60`    | Seconds the warning is visible before the IDE closes. Set to `0` to close immediately.                         |
+| **Don't close while a run/debug process is active** | `On`    | Postpone shutdown while tests, builds, or debug sessions are running.                                          |
+| **Show last activity in status bar**                | `Off`   | Display the last keyboard/mouse activity timestamp in the IDE status bar.                                      |
 
-### Idle Timeout via File
+### Idle Timeout via Config File
 
-The idle timeout can be set centrally by creating the file `/tmp/idle` with a single integer value (in minutes):
+The idle timeout can be set centrally by creating the file `~/.config/bakito/intellij-idle-shutdown.xml`.
+When this file exists, the timeout is read from it and cannot be changed from the IDE settings UI. The feature is also forced enabled. If the file is missing or contains an invalid value, the plugin uses the value from the IDE settings (default: **60 minutes**).
 
-```bash
-echo "60" > /tmp/idle
+#### Example Config File
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<idleShutdownAfterMinutes>60</idleShutdownAfterMinutes>
 ```
 
-When this file exists, the timeout is read from it and cannot be changed from the IDE settings UI. The feature is also forced enabled. If the file is missing or contains an invalid value, the plugin uses the value from the IDE settings (default: **60 minutes**).
+To create the config file:
+
+```bash
+mkdir -p ~/.config/bakito
+cat > ~/.config/bakito/intellij-idle-shutdown.xml << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<idleShutdownAfterMinutes>60</idleShutdownAfterMinutes>
+EOF
+```
 
 ### How it works
 
@@ -106,3 +118,23 @@ When this file exists, the timeout is read from it and cannot be changed from th
 - Any keyboard or mouse input during the warning period cancels the shutdown.
 - If the warning countdown expires, all modified files are saved and the IDE exits.
 - If "Don't close while a run/debug process is active" is enabled, shutdown is postponed while tests, builds, or debug sessions are running.
+
+### Troubleshooting
+
+#### SSL error during `buildSearchableOptions`
+
+When building the plugin, you may encounter an SSL certificate error in the `buildSearchableOptions` Gradle task:
+
+> javax.net.ssl.SSLHandshakeException: ... / X509TrustException: ...
+
+**Cause:** The `buildSearchableOptions` task launches the IDE in headless mode to generate metadata for searchable settings. On some corporate networks or CI environments with strict SSL/proxy configurations, the headless IDE instance fails to validate SSL certificates when downloading resources.
+
+**Fix:** If the error is non-blocking (the build still succeeds), it can be safely ignored. To eliminate the error, you can disable the task in `build.gradle.kts`:
+
+```kotlin
+intellijPlatform {
+    buildSearchableOptions = false
+}
+```
+
+Disabling this task means the plugin's settings won't appear in the IDE Settings search dialog, but all other functionality remains unaffected. Alternatively, ensure your build environment has access to the required SSL certificates or is properly configured for your network's proxy.
