@@ -1,6 +1,9 @@
 package com.github.bakito.idleshutdown
 
 import com.intellij.execution.ExecutionManager
+import com.intellij.ide.IdeEventQueue
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.ex.AnActionListener
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
 import com.intellij.notification.Notifications
@@ -13,6 +16,8 @@ import com.intellij.openapi.project.ProjectManager
 import java.awt.AWTEvent
 import java.awt.Toolkit
 import java.awt.event.AWTEventListener
+import java.awt.event.InputEvent
+import java.awt.event.InputMethodEvent
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -37,7 +42,20 @@ class IdleWatchdog : Disposable {
     // Only touched on the EDT.
     private var warning: Notification? = null
 
-    private val activityListener = AWTEventListener {
+    private val activityListener = AWTEventListener { onUserActivity() }
+
+    /**
+     * Sees every input event before IntelliJ's key/mouse dispatchers consume it. Editor typing and
+     * shortcuts are often consumed there and never reach the plain AWT listener.
+     */
+    private val ideEventDispatcher = object : IdeEventQueue.EventDispatcher {
+        override fun dispatch(e: AWTEvent): Boolean {
+            if (e is InputEvent || e is InputMethodEvent) onUserActivity()
+            return false // never consume
+        }
+    }
+
+    private fun onUserActivity() {
         lastActivityMs = System.currentTimeMillis()
         if (shutdownDeadlineMs != 0L) cancelPendingShutdown("activity")
     }
@@ -79,8 +97,15 @@ class IdleWatchdog : Disposable {
             AWTEvent.MOUSE_EVENT_MASK or
                 AWTEvent.MOUSE_MOTION_EVENT_MASK or
                 AWTEvent.MOUSE_WHEEL_EVENT_MASK or
-                AWTEvent.KEY_EVENT_MASK
+                AWTEvent.KEY_EVENT_MASK or
+                AWTEvent.FOCUS_EVENT_MASK or
+                AWTEvent.INPUT_METHOD_EVENT_MASK
         )
+        IdeEventQueue.getInstance().addDispatcher(ideEventDispatcher, this)
+        ApplicationManager.getApplication().messageBus.connect(this)
+            .subscribe(AnActionListener.TOPIC, object : AnActionListener {
+                override fun beforeEditorTyping(c: Char, dataContext: DataContext) = onUserActivity()
+            })
         executor.scheduleWithFixedDelay({ checkSafely() }, CHECK_INTERVAL_S, CHECK_INTERVAL_S, TimeUnit.SECONDS)
     }
 

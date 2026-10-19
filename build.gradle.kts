@@ -28,6 +28,11 @@ tasks.test {
     useJUnitPlatform()
 }
 
+// Make `./gradlew build` / `assemble` also produce the plugin zip in build/distributions.
+tasks.assemble {
+    dependsOn(tasks.buildPlugin)
+}
+
 
 intellijPlatform {
     pluginConfiguration {
