@@ -11,6 +11,14 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.event.CaretEvent
+import com.intellij.openapi.editor.event.CaretListener
+import com.intellij.openapi.editor.event.EditorMouseEvent
+import com.intellij.openapi.editor.event.EditorMouseListener
+import com.intellij.openapi.editor.event.EditorMouseMotionListener
+import com.intellij.openapi.editor.event.SelectionEvent
+import com.intellij.openapi.editor.event.SelectionListener
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.ProjectManager
 import java.awt.AWTEvent
@@ -55,7 +63,8 @@ class IdleWatchdog : Disposable {
         }
     }
 
-    private fun onUserActivity() {
+    /** Records user activity (input, opening/closing/switching files, ...) and cancels a pending shutdown. */
+    fun onUserActivity() {
         lastActivityMs = System.currentTimeMillis()
         if (shutdownDeadlineMs != 0L) cancelPendingShutdown("activity")
     }
@@ -81,16 +90,19 @@ class IdleWatchdog : Disposable {
         return lastActivityMs + timeoutMs
     }
 
+    /** If the timeout file exists, the plugin is forced enabled; otherwise the user setting decides. */
+    private fun isEnabled(): Boolean {
+        val settings = IdleShutdownSettings.getInstance()
+        return settings.isTimeoutFilePresent() || settings.state.enabled
+    }
+
+    /**
+     * Starts activity tracking. Tracking always runs (it is cheap), so enabling the feature later in the
+     * settings works without restarting the IDE and starts from the real last activity.
+     */
     @Synchronized
     fun start() {
         if (started) return
-        val settings = IdleShutdownSettings.getInstance()
-        // If the timeout file exists, the plugin is forced enabled; otherwise respect the user setting
-        val timeoutFilePresent = settings.isTimeoutFilePresent()
-        if (!timeoutFilePresent && !settings.state.enabled) {
-            log.info("Idle shutdown is disabled by user and no timeout file present; not starting")
-            return
-        }
         started = true
         Toolkit.getDefaultToolkit().addAWTEventListener(
             activityListener,
@@ -106,6 +118,23 @@ class IdleWatchdog : Disposable {
             .subscribe(AnActionListener.TOPIC, object : AnActionListener {
                 override fun beforeEditorTyping(c: Char, dataContext: DataContext) = onUserActivity()
             })
+        // Editor-level safety net: selecting/highlighting code, moving the caret, clicking or moving the mouse.
+        EditorFactory.getInstance().eventMulticaster.apply {
+            addSelectionListener(object : SelectionListener {
+                override fun selectionChanged(e: SelectionEvent) = onUserActivity()
+            }, this@IdleWatchdog)
+            addCaretListener(object : CaretListener {
+                override fun caretPositionChanged(event: CaretEvent) = onUserActivity()
+            }, this@IdleWatchdog)
+            addEditorMouseListener(object : EditorMouseListener {
+                override fun mousePressed(event: EditorMouseEvent) = onUserActivity()
+                override fun mouseReleased(event: EditorMouseEvent) = onUserActivity()
+            }, this@IdleWatchdog)
+            addEditorMouseMotionListener(object : EditorMouseMotionListener {
+                override fun mouseMoved(e: EditorMouseEvent) = onUserActivity()
+                override fun mouseDragged(e: EditorMouseEvent) = onUserActivity()
+            }, this@IdleWatchdog)
+        }
         executor.scheduleWithFixedDelay({ checkSafely() }, CHECK_INTERVAL_S, CHECK_INTERVAL_S, TimeUnit.SECONDS)
     }
 
@@ -120,6 +149,11 @@ class IdleWatchdog : Disposable {
 
     private fun check() {
         val now = System.currentTimeMillis()
+
+        if (!isEnabled()) {
+            if (shutdownDeadlineMs != 0L) cancelPendingShutdown("disabled")
+            return
+        }
 
         val deadline = shutdownDeadlineMs
         if (deadline != 0L) {
@@ -141,7 +175,7 @@ class IdleWatchdog : Disposable {
     private fun onIdleTimeoutReached() {
         val settingsInstance = IdleShutdownSettings.getInstance()
         val settings = settingsInstance.state
-        if (shutdownDeadlineMs != 0L) return
+        if (shutdownDeadlineMs != 0L || !isEnabled()) return
 
         // Re-check: the user may have moved the mouse since the background check.
         val timeoutMs = settingsInstance.getTimeoutMinutes().coerceAtLeast(1) * 60_000L

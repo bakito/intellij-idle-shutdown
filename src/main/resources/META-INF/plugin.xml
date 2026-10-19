@@ -22,4 +22,9 @@
         <statusBarWidgetFactory id="IdleActivityStatusBarWidget"
                                  implementation="com.github.bakito.idleshutdown.IdleActivityStatusBarWidgetFactory"/>
     </extensions>
+
+    <projectListeners>
+        <listener class="com.github.bakito.idleshutdown.IdleFileActivityListener"
+                  topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
+    </projectListeners>
 </idea-plugin>

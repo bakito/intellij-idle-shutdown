@@ -35,7 +35,7 @@ class IdleShutdownModeTest {
     private fun canBeDisabled(timeoutFileExists: Boolean): Boolean = !timeoutFileExists
 
     /**
-     * Replicates the effective idle enabled check from [IdleWatchdog.start] and
+     * Replicates the effective idle enabled check from [IdleWatchdog.isEnabled] and
      * [IdleActivityStatusBarWidgetFactory.isAvailable].
      * `val idleEnabled = timeoutFilePresent || settings.state.enabled`
      */
@@ -43,8 +43,8 @@ class IdleShutdownModeTest {
         timeoutFileExists || userEnabled
 
     /**
-     * Replicates the watchdog start decision — the watchdog starts only when
-     * idle is effectively enabled (file-triggered or user-enabled).
+     * Replicates the watchdog shutdown decision — activity is always tracked, but the
+     * watchdog only shuts down when idle is effectively enabled (file-triggered or user-enabled).
      */
     private fun watchdogShouldStart(timeoutFileExists: Boolean, userEnabled: Boolean): Boolean =
         isIdleEnabled(timeoutFileExists, userEnabled)
