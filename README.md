@@ -12,6 +12,7 @@ An IntelliJ IDEA plugin that automatically saves all files and closes the IDE af
 - **Status bar** — Optionally displays the last activity timestamp and a countdown until shutdown in the IDE status bar; the countdown turns red during the warning phase.
 - **Safe** — Saves all open files before exiting.
 - **Configurable** — Enable/disable the feature and adjust the idle timeout directly from the IDE settings, or set the timeout via a file for centralized control.
+- **Cloud Workstation keepalive** — When running inside a Google Cloud Workstation, automatically prevents the workstation from shutting down due to idle timeout by reporting activity to the local gateway.
 
 ## Requirements
 
@@ -118,6 +119,70 @@ EOF
 - Any keyboard or mouse input during the warning period cancels the shutdown.
 - If the warning countdown expires, all modified files are saved and the IDE exits.
 - If "Don't close while a run/debug process is active" is enabled, shutdown is postponed while tests, builds, or debug sessions are running.
+
+## Cloud Workstation Keepalive
+
+When the plugin detects that it is running inside a [Google Cloud Workstation](https://cloud.google.com/workstations), it automatically activates a keepalive mechanism to prevent the workstation from shutting down due to idle timeout.
+
+### How it works
+
+- On IDE startup the plugin checks for the `GOOGLE_CLOUD_WORKSTATIONS` environment variable. If present, the keepalive is enabled.
+- The plugin monitors keyboard and mouse activity, similar to the idle shutdown tracker.
+- When the IDE has been idle for more than **30 seconds**, the plugin sends an HTTP `GET` request to the local Cloud Workstation gateway (`http://localhost:981/_workstation/reportactivity`) to signal that the session is still in use.
+- The keepalive check runs every **15 seconds**. Network failures are silently retried on the next tick.
+- No configuration is required — the feature activates automatically and runs in the background.
+
+### When it runs
+
+The keepalive only activates when the `GOOGLE_CLOUD_WORKSTATIONS` environment variable is set. On local machines or other cloud environments it is completely inactive and has no overhead.
+
+## Idle Shutdown vs. Cloud Workstation Keepalive
+
+The plugin includes two independent features that address idle behavior from opposite directions:
+
+| Aspect | Idle Shutdown | Cloud Workstation Keepalive |
+|---|---|---|
+| **Purpose** | Closes the IDE after a period of inactivity to free resources. | Keeps the Cloud Workstation alive by reporting activity to the gateway. |
+| **Trigger** | Configurable idle timeout (default: 60 minutes). | Fixed 30-second idle threshold. |
+| **Action** | Shows a warning, then saves files and exits the IDE. | Sends HTTP pings to `localhost:981` to prevent workstation auto-shutdown. |
+| **Configuration** | User-configurable via IDE settings or config file. | No configuration; activates automatically when `GOOGLE_CLOUD_WORKSTATIONS` is set. |
+| **Environment** | Runs everywhere. | Only runs inside Google Cloud Workstations. |
+| **User control** | Can be enabled/disabled in settings. | Always active in supported environments; cannot be disabled. |
+
+### How they complement each other
+
+The two features are **complementary, not mutually exclusive**. They serve different purposes and operate independently:
+
+- **Idle Shutdown** closes the IDE when you walk away, freeing local or cloud compute resources.
+- **Cloud Workstation Keepalive** ensures the underlying workstation stays running while the IDE is open, even during brief pauses.
+
+In practice, when running on a Cloud Workstation, the keepalive prevents the workstation from shutting down during short idle periods (e.g., reading documentation, thinking, or stepping away briefly). Once the idle shutdown timeout is reached (e.g., after 60 minutes), the IDE exits — which also stops the keepalive, allowing the workstation to eventually shut down on its own schedule.
+
+Together they provide a balanced approach: the workstation stays alive while you're actively working (with short breaks), but the IDE still closes when you're truly done for the day.
+
+### Implementation comparison with Google Cloud Code
+
+The keepalive implementation in this plugin was inspired by Google's Cloud Code IntelliJ plugin, but takes a different approach to activity tracking. Here is how they compare:
+
+| Aspect | Google Cloud Code | This Plugin |
+|---|---|---|
+| **Activity tracking** | Own `lastActivityTime` field with dedicated `IdeEventQueue.addPostprocessor()` listener | Reuses `IdleWatchdog.getLastActivityTime()` — no duplicate state |
+| **Event listener lifecycle** | Registers a postprocessor on startup; never removes it | No listener registered — borrows IdleWatchdog's existing listeners |
+| **Listener leak risk** | Postprocessor fires on every AWT event for the IDE's lifetime | None — no additional listener |
+| **Activity sources** | AWT events + `ComponentEvent` (resize/move/show) | AWT + `IdeEventQueue` + editor caret, selection, and mouse events (broader coverage) |
+| **Scheduler** | `java.util.Timer` (single-threaded; one uncaught exception kills it) | `ScheduledExecutorService` (robust, standard modern Java) |
+| **HTTP client** | `com.google.api.client.http.HttpRequestFactory` with retry handler | Reused `java.net.http.HttpClient` singleton, no extra dependency |
+| **Code footprint** | Self-contained but duplicates activity tracking logic | ~97 lines, delegates activity to existing service |
+| **Portability** | Independent — works in any plugin | Depends on `IdleWatchdog` being available |
+
+#### Key advantages of this approach
+
+1. **No resource leaks.** Google Cloud Code's `addPostprocessor()` registers an event dispatcher that fires on every AWT event for the entire IDE session and is never removed. This plugin has zero additional listeners — it simply polls `IdleWatchdog`'s existing timestamp.
+2. **Broader activity detection.** `IdleWatchdog` listens to AWT events, `IdeEventQueue` dispatchers, editor caret/selection/mouse events, and action listeners. Google Cloud Code only listens to AWT + `ComponentEvent`. The keepalive benefits from all of IdleWatchdog's sources without adding any of its own.
+3. **Less code, fewer moving parts.** By reusing `IdleWatchdog`, an entire activity tracking subsystem (listener registration, timestamp field, event filtering logic) is eliminated. Fewer lines of code means fewer bugs.
+4. **Modern Java patterns.** `ScheduledExecutorService` over `java.util.Timer`, and a reused `HttpClient` singleton over per-request client creation.
+
+The only trade-off is a dependency on `IdleWatchdog`, which is acceptable since both components live in the same plugin and serve complementary purposes. The coupling ensures both features share a single source of truth for user activity.
 
 ### Troubleshooting
 
