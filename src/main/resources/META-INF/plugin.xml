@@ -15,6 +15,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <notificationGroup id="Idle Shutdown" displayType="STICKY_BALLOON"/>
         <postStartupActivity implementation="com.github.bakito.idleshutdown.IdleShutdownStartup"/>
+        <backgroundPostStartupActivity implementation="com.github.bakito.idleshutdown.CloudWorkstationKeepalive"/>
         <applicationConfigurable parentId="tools"
                                  id="com.github.bakito.idleshutdown.settings"
                                  instance="com.github.bakito.idleshutdown.IdleShutdownConfigurable"
